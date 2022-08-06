@@ -1,18 +1,38 @@
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-etherscan";
 import { ethers } from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
+  const MasterCopyRinkeby: string =
+    "0x9c5ba02C7CCd1F11346E43785202711cE1DCc130";
+  const ProxyFactoryRinkeby: string =
+    "0x23cCC7463468e3C56A4CE37Afab577EB3dd0e3CB";
 
-  const lockedAmount = ethers.utils.parseEther("1");
+  const contract = await ethers.getContractFactory("Factory");
+  const contractDeploy = await contract.deploy(
+    ProxyFactoryRinkeby,
+    MasterCopyRinkeby
+  );
+  await contractDeploy.deployed();
 
-  const Lock = await ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+  console.log("Contract Deploy at", contractDeploy.address);
 
-  await lock.deployed();
+  console.log("Sleeping.....");
+  // Wait for etherscan to notice that the contract has been deployed
+  await sleep(50000);
 
-  console.log("Lock with 1 ETH deployed to:", lock.address);
+  // Verify the contract after deploying
+  //@ts-ignore
+  await hre.run("verify:verify", {
+    address: contractDeploy.address,
+    constructorArguments: [ProxyFactoryRinkeby, MasterCopyRinkeby],
+  });
+
+  console.log("done");
+
+  function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
